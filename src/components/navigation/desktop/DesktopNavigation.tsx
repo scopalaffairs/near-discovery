@@ -181,7 +181,7 @@ export const DesktopNavigation = () => {
             </Logo>
           </Link>
 
-          <Search>
+          {/* <Search>
             <form onSubmit={handleSearchSubmit}>
               <input
                 placeholder="Search NEAR"
@@ -204,11 +204,11 @@ export const DesktopNavigation = () => {
                 <TypeAheadDropdown term={searchTerm} focusChange={setSearchIsFocused} />
               </TypeAheadDropdownContainer>
             )}
-          </Search>
+          </Search> */}
 
           <MainNavigationMenu />
 
-          <Actions>
+          {/* <Actions>
             {signedIn ? (
               <>
                 <NotificationButton />
@@ -220,7 +220,7 @@ export const DesktopNavigation = () => {
                 <Button label="Create Account" variant="primary" onClick={handleCreateAccount} />
               </>
             )}
-          </Actions>
+          </Actions> */}
         </Container>
       </Wrapper>
     </>

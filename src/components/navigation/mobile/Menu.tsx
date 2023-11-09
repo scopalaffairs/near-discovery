@@ -119,7 +119,7 @@ export function Menu(props: Props) {
       <InnerWrapper>
         <NearconBanner inline />
 
-        <SearchButton onClick={search}>Search NEAR</SearchButton>
+        {/* <SearchButton onClick={search}>Search NEAR</SearchButton> */}
 
         <AccordionMenu onCloseMenu={props.onCloseMenu} />
 
