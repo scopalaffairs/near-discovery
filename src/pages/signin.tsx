@@ -1,3 +1,4 @@
+import { getKeys, isPassKeyAvailable } from '@near-js/biometric-ed25519';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -9,9 +10,9 @@ import { useClearCurrentComponent } from '@/hooks/useClearCurrentComponent';
 import { useDefaultLayout } from '@/hooks/useLayout';
 import { useSignInRedirect } from '@/hooks/useSignInRedirect';
 import { useAuthStore } from '@/stores/auth';
+import signedOutRoute from '@/utils/route/signedOutRoute';
 import type { NextPageWithLayout } from '@/utils/types';
 
-import { handleCreateAccount } from '../utils/auth';
 import { isValidEmail } from '../utils/form-validation';
 
 const SignInPage: NextPageWithLayout = () => {
@@ -19,9 +20,8 @@ const SignInPage: NextPageWithLayout = () => {
   const router = useRouter();
   const requestSignInWithWallet = useAuthStore((store) => store.requestSignInWithWallet);
   const signedIn = useAuthStore((store) => store.signedIn);
+  const vmNear = useAuthStore((store) => store.vmNear);
   const { redirect } = useSignInRedirect();
-
-  useClearCurrentComponent();
 
   useEffect(() => {
     if (signedIn) {
@@ -29,27 +29,20 @@ const SignInPage: NextPageWithLayout = () => {
     }
   }, [redirect, signedIn]);
 
+  useClearCurrentComponent();
+
   const onSubmit = handleSubmit(async (data) => {
-    if (!data.email) return;
+    if (!data.email || !vmNear) return;
 
-    try {
-      const { publicKey, email } = await handleCreateAccount(null, data.email, true);
-      router.push(`/verify-email?publicKey=${publicKey}&email=${email}&isRecovery=true`);
-    } catch (error: any) {
-      console.log(error);
-
-      if (typeof error?.message === 'string') {
-        openToast({
-          type: 'ERROR',
-          title: error.message,
-        });
-      } else {
-        openToast({
-          type: 'ERROR',
-          title: 'Something went wrong',
-        });
-      }
-    }
+    vmNear.selector
+      .then((selector: any) => selector.wallet('fast-auth-wallet'))
+      .then((fastAuthWallet: any) =>
+        fastAuthWallet.signIn({
+          contractId: vmNear.config.contractName,
+          email: data.email,
+          isRecovery: true,
+        }),
+      );
   });
 
   return (
@@ -85,7 +78,7 @@ const SignInPage: NextPageWithLayout = () => {
 };
 SignInPage.getLayout = useDefaultLayout;
 
-export default SignInPage;
+export default signedOutRoute(SignInPage);
 
 const StyledContainer = styled.div`
   width: 100%;

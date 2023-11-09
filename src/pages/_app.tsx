@@ -14,10 +14,12 @@ import { useEffect } from 'react';
 
 import { Toaster } from '@/components/lib/Toast';
 import { useBosLoaderInitializer } from '@/hooks/useBosLoaderInitializer';
+import { useClickTracking } from '@/hooks/useClickTracking';
 import { useHashUrlBackwardsCompatibility } from '@/hooks/useHashUrlBackwardsCompatibility';
 import { usePageAnalytics } from '@/hooks/usePageAnalytics';
 import { useAuthStore } from '@/stores/auth';
 import { init as initializeAnalytics } from '@/utils/analytics';
+import { setNotificationsSessionStorage } from '@/utils/notificationsLocalStorage';
 import type { NextPageWithLayout } from '@/utils/types';
 import { styleZendesk } from '@/utils/zendesk';
 
@@ -33,10 +35,15 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   useBosLoaderInitializer();
   useHashUrlBackwardsCompatibility();
   usePageAnalytics();
+  useClickTracking();
   const getLayout = Component.getLayout ?? ((page) => page);
   const router = useRouter();
   const authStore = useAuthStore();
   const componentSrc = router.query;
+
+  useEffect(() => {
+    setNotificationsSessionStorage();
+  }, []);
 
   useEffect(() => {
     initializeAnalytics();
@@ -76,7 +83,13 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
     <>
       <Head>
         <meta name="google-site-verification" content="CDEVFlJTyVZ2vM7ePugKgWsl_7Rd-MrfDv42u0vZ0B0" />
+        <link rel="manifest" href="/site.webmanifest" />
         <link rel="icon" href="favicon.ico" />
+        <link
+          rel="canonical"
+          href={`${process.env.NEXT_PUBLIC_HOSTNAME}/near/widget/NearOrg.HomePage`}
+          key="canonical"
+        />
       </Head>
 
       <Script id="phosphor-icons" src="https://unpkg.com/@phosphor-icons/web@2.0.3" async />
@@ -87,7 +100,7 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
         async
       />
 
-      <Script id="zendesk-config">
+      <Script id="zendesk-config" strategy="afterInteractive">
         {`
           window.zESettings = {
             webWidget: {
@@ -119,6 +132,25 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
       {getLayout(<Component {...pageProps} />)}
 
       <Toaster />
+
+      <div
+        id="idos_container"
+        style={
+          !router.route.startsWith('/settings')
+            ? ({
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: 0,
+                height: 0,
+                margin: 0,
+                padding: 0,
+                opacity: 0,
+                overflow: 'hidden',
+              } as React.CSSProperties)
+            : undefined
+        }
+      />
     </>
   );
 }

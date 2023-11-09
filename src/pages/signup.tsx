@@ -1,4 +1,3 @@
-import { isPassKeyAvailable } from '@near-js/biometric-ed25519';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useState } from 'react';
@@ -13,7 +12,6 @@ import { useCurrentComponentStore } from '@/stores/current-component';
 import { network } from '@/utils/config';
 import type { NextPageWithLayout } from '@/utils/types';
 
-import { handleCreateAccount } from '../utils/auth';
 import { accountAddressPatternNoSubaccount, emailPattern, getEmailId, isValidEmail } from '../utils/form-validation';
 
 const ErrorText = styled.p`
@@ -35,21 +33,7 @@ const SignUpPage: NextPageWithLayout = () => {
   } = useForm();
   const formValues = watch();
   const signedIn = useAuthStore((store) => store.signedIn);
-
-  useEffect(() => {
-    const checkPassKey = async (): Promise<void> => {
-      const isPasskeyReady = await isPassKeyAvailable();
-      if (!isPasskeyReady) {
-        openToast({
-          title: '',
-          type: 'INFO',
-          description: 'Passkey support is required for account creation. Try using an updated version of Chrome or Safari to create an account.',
-          duration: 5000,
-        })
-      }
-    }
-    checkPassKey();
-  }, []);
+  const vmNear = useAuthStore((store) => store.vmNear);
 
   // redirect to home upon signing in
   useEffect(() => {
@@ -100,20 +84,16 @@ const SignUpPage: NextPageWithLayout = () => {
 
   const onSubmit = handleSubmit(async (data) => {
     if (!data?.username || !data.email) return;
-    try {
-      const fullAccountId = `${data.username}.${network.fastAuth.accountIdSuffix}`;
-      const { publicKey, accountId, email } = await handleCreateAccount(fullAccountId, data.email, false);
-      router.push(
-        `/verify-email?publicKey=${encodeURIComponent(publicKey)}&accountId=${encodeURIComponent(
-          accountId,
-        )}&email=${encodeURIComponent(email)}`,
+    vmNear.selector
+      .then((selector: any) => selector.wallet('fast-auth-wallet'))
+      .then((fastAuthWallet: any) =>
+        fastAuthWallet.signIn({
+          contractId: vmNear.config.contractName,
+          email: data.email,
+          accountId: data.username,
+          isRecovery: false,
+        }),
       );
-    } catch (error: any) {
-      openToast({
-        type: 'ERROR',
-        title: error.message,
-      });
-    }
   });
 
   useEffect(() => {
@@ -172,6 +152,7 @@ const SignUpPage: NextPageWithLayout = () => {
                 message: 'Please enter a valid email address',
               },
             })}
+            autoCapitalize="off"
             onChange={(e) => {
               clearErrors('email');
               setValue('email', e.target.value);
@@ -191,6 +172,7 @@ const SignUpPage: NextPageWithLayout = () => {
         <InputContainer>
           <label htmlFor="username">Account ID</label>
           <input
+            autoCapitalize="off"
             autoComplete="webauthn username"
             {...register('username', {
               required: 'Please enter a valid account ID',
@@ -215,7 +197,7 @@ const SignUpPage: NextPageWithLayout = () => {
           )}
         </InputContainer>
 
-        <Button label="Continue" variant="affirmative" onClick={onSubmit} />
+        <Button label="Continue" variant="affirmative" type="submit" />
 
         <hr style={{ borderColor: 'hsl(55, 1.7%, 51.9%)' }} />
 

@@ -8,7 +8,6 @@ import { useBosComponents } from '@/hooks/useBosComponents';
 import { useAuthStore } from '@/stores/auth';
 import { useCurrentComponentStore } from '@/stores/current-component';
 import { useVmStore } from '@/stores/vm';
-import { recordClick } from '@/utils/analytics';
 
 import { Spinner } from '../lib/Spinner';
 import BannerOboarding from './Banners/BannerOboarding';
@@ -70,13 +69,10 @@ export const Sandbox = ({ onboarding = false }) => {
 
   const router = useRouter();
   const widgets = useBosComponents();
-  const tos = {
-    checkComponentPath: widgets.tosCheck,
-    contentComponentPath: widgets.tosContent,
-  };
 
   const [mainLoader, setMainLoader] = useState(false);
   const [filesObject, setFilesObject] = useState({});
+  const [localChecked, setLocalChecked] = useState();
   const [path, setPath] = useState(undefined);
   const [lastPath, setLastPath] = useState(undefined);
   const [renderCode, setRenderCode] = useState();
@@ -95,43 +91,20 @@ export const Sandbox = ({ onboarding = false }) => {
   const widgetPath = `${accountId}/${path?.type}/${path?.name}`;
   const jpath = JSON.stringify(path);
   const { isDraft } = filesObject[jpath] || {};
-  const showEditor = Object.keys(filesObject)?.length;
+  const showEditor = !!Object.keys(filesObject)?.length || !localChecked;
   const isModule = path?.type === 'module';
   const layoutClass = layout === Layout.Split ? 'col-lg-6' : '';
   const shouldRender = !!near && !!cache;
 
   const setComponentSrc = useCurrentComponentStore((store) => store.setSrc);
 
-  const getFileLocalStorage = useCallback(
+  const getFileData = useCallback(
     (file) => {
-      const path = fileToPath(file);
-      const jpath = fileToJpath(file);
-
-      cache
-        .asyncLocalStorageGet(StorageDomain, {
-          path,
-          type: StorageType.Code,
-        })
-        .then(({ code } = {}) => {
-          setFilesObject((state) => ({
-            ...state,
-            [jpath]: {
-              ...state[jpath],
-              codeLocalStorage: code,
-              codeVisible: code,
-            },
-          }));
-        });
-    },
-    [cache],
-  );
-
-  const getFileSocialDB = useCallback(
-    (file, setLocalStorage = false) => {
       if (!file.src) {
         return;
       }
 
+      const path = fileToPath(file);
       const jpath = fileToJpath(file);
       const widgetSrc = `${file.src}/**`;
 
@@ -140,36 +113,45 @@ export const Sandbox = ({ onboarding = false }) => {
 
         if (widgetObject && file.new) {
           const { codeMain, codeDraft, isDraft } = getWidgetDetails(widgetObject);
+          const onChainCode = codeDraft || codeMain;
 
-          setFilesObject((state) => ({
-            ...state,
-            [jpath]: {
-              ...state[jpath],
-              codeMain,
-              codeDraft,
-              isDraft,
-              codeVisible: codeMain,
-              changesMade: checkChangesMade(codeMain, codeDraft, state[jpath]?.codeLocalStorage || ''),
-              savedOnChain: true,
-              new: false,
-            },
-          }));
+          cache
+            .asyncLocalStorageGet(StorageDomain, {
+              path,
+              type: StorageType.Code,
+            })
+            .then(({ code } = {}) => {
+              setFilesObject((state) => ({
+                ...state,
+                [jpath]: {
+                  ...state[jpath],
+                  codeMain,
+                  codeDraft,
+                  isDraft,
+                  savedOnChain: true,
+                  changesMade: code ? checkChangesMade(onChainCode, codeDraft, code) : false,
+                  codeLocalStorage: code || onChainCode,
+                  codeVisible: code || state[jpath].codeVisible || onChainCode,
+                },
+              }));
+            });
+        }
 
-          if (setLocalStorage) {
-            const newPath = fileToPath(file);
-            const code = codeDraft || codeMain;
-            updateCodeLocalStorage(newPath, codeDraft || codeMain, cache);
+        cache
+          .asyncLocalStorageGet(StorageDomain, {
+            path,
+            type: StorageType.Code,
+          })
+          .then(({ code } = {}) => {
             setFilesObject((state) => ({
               ...state,
               [jpath]: {
                 ...state[jpath],
                 codeLocalStorage: code,
-                codeVisible: code,
-                changesMade: false,
+                codeVisible: code || state[jpath].codeVisible,
               },
             }));
-          }
-        }
+          });
       };
       fetchCode();
     },
@@ -209,9 +191,9 @@ export const Sandbox = ({ onboarding = false }) => {
       addFile(newFile);
       setRenderCode(null);
       selectFile(path);
-      getFileSocialDB(newFile, true);
+      getFileData(newFile);
     },
-    [accountId, addFile, getFileSocialDB, onboarding],
+    [accountId, addFile, getFileData, onboarding],
   );
 
   useEffect(() => {
@@ -219,6 +201,7 @@ export const Sandbox = ({ onboarding = false }) => {
       return;
     }
 
+    setLocalChecked(true);
     loadAndOpenFile(defaultWidget, defaultWidget.split('/')[1]);
     setDefaultWidget(null);
     router.replace('/sandbox');
@@ -230,22 +213,13 @@ export const Sandbox = ({ onboarding = false }) => {
     setMetadata(undefined);
   };
 
-  const getAllFileLocalStorage = useCallback(
+  const collectAllFileData = useCallback(
     (filesObject) => {
       Object.values(filesObject).map((file) => {
-        getFileLocalStorage(file);
+        getFileData(file);
       });
     },
-    [getFileLocalStorage],
-  );
-
-  const getAllFileSocialDB = useCallback(
-    (filesObject) => {
-      Object.values(filesObject).map((file) => {
-        getFileSocialDB(file);
-      });
-    },
-    [getFileSocialDB],
+    [getFileData],
   );
 
   const firstLoad = useCallback(() => {
@@ -268,8 +242,7 @@ export const Sandbox = ({ onboarding = false }) => {
 
       setFilesObject(filesObject);
       selectFile(filesObject[fileToJpath(path)]);
-      getAllFileLocalStorage(filesObject);
-      getAllFileSocialDB(filesObject);
+      collectAllFileData(filesObject);
 
       if (onboarding) {
         return;
@@ -278,12 +251,13 @@ export const Sandbox = ({ onboarding = false }) => {
       const { componentSrc } = router.query;
 
       if (!Array.isArray(router.query.componentSrc)) {
+        setLocalChecked(true);
         return;
       }
 
       setDefaultWidget(componentSrc.join('/'));
     });
-  }, [cache, currentStep, getAllFileLocalStorage, getAllFileSocialDB, onboarding, router.query, setComponentSrc]);
+  }, [cache, collectAllFileData, currentStep, onboarding, router.query, setComponentSrc]);
 
   const renameFile = (newName) => {
     const pathNew = nameToPath(path.type, newName);
@@ -306,7 +280,6 @@ export const Sandbox = ({ onboarding = false }) => {
   };
 
   const changeCode = (path, code) => {
-    updateCodeLocalStorage(path, code, cache);
     const jpath = JSON.stringify(path);
 
     setFilesObject((state) => ({
@@ -315,9 +288,11 @@ export const Sandbox = ({ onboarding = false }) => {
         ...state[jpath],
         codeLocalStorage: code,
         codeVisible: code,
+        savedOnChain: false,
         changesMade: checkChangesMade(state[jpath].codeMain, state[jpath].codeDraft, code),
       },
     }));
+    updateCodeLocalStorage(path, code, cache);
   };
 
   const reformat = (path, code) => {
@@ -445,7 +420,9 @@ export const Sandbox = ({ onboarding = false }) => {
     selectFile(newPath);
   };
 
+  // possibly unused
   const reloadFile = () => {
+    console.log('reloadFile which is never called');
     const onboardingPath = onboardingComponents.starter;
     selectFile(onboardingPath);
     setMainLoader(false);
@@ -505,7 +482,7 @@ export const Sandbox = ({ onboarding = false }) => {
 
   return (
     <MainWrapper>
-      <div onPointerUp={recordClick}>
+      <div>
         <MobileBlocker onboarding={onboarding} />
 
         {onboarding && (
@@ -557,7 +534,6 @@ export const Sandbox = ({ onboarding = false }) => {
               <div className="container-fluid mt-1" style={{ position: 'relative' }}>
                 <Search
                   widgets={widgets}
-                  tos={tos}
                   logOut={logOut}
                   loadAndOpenFile={loadAndOpenFile}
                   refs={refs}

@@ -2,6 +2,7 @@ import { sanitizeUrl } from '@braintree/sanitize-url';
 import { setupKeypom } from '@keypom/selector';
 import { setupWalletSelector } from '@near-wallet-selector/core';
 import { setupHereWallet } from '@near-wallet-selector/here-wallet';
+import { setupLedger } from '@near-wallet-selector/ledger';
 import { setupMeteorWallet } from '@near-wallet-selector/meteor-wallet';
 import type { WalletSelectorModal } from '@near-wallet-selector/modal-ui';
 import { setupModal } from '@near-wallet-selector/modal-ui';
@@ -12,6 +13,7 @@ import { setupNightly } from '@near-wallet-selector/nightly';
 import { setupSender } from '@near-wallet-selector/sender';
 import { setupWelldoneWallet } from '@near-wallet-selector/welldone-wallet';
 import Big from 'big.js';
+import { setupFastAuthWallet } from 'near-fastauth-wallet';
 import {
   CommitButton,
   EthersProviderContext,
@@ -26,11 +28,11 @@ import Link from 'next/link';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { useEthersProviderContext } from '@/data/web3';
+import { useIdOS } from '@/hooks/useIdOS';
 import { useSignInRedirect } from '@/hooks/useSignInRedirect';
-import { setupFastAuth } from '@/lib/selector/setup';
 import { useAuthStore } from '@/stores/auth';
 import { useVmStore } from '@/stores/vm';
-import { recordWalletConnect, reset as resetSegment } from '@/utils/analytics';
+import { recordWalletConnect, reset as resetAnalytics } from '@/utils/analytics';
 import { networkId, signInContractId } from '@/utils/config';
 import { KEYPOM_OPTIONS } from '@/utils/keypom-options';
 
@@ -48,6 +50,7 @@ export default function VmInitializer() {
   const setAuthStore = useAuthStore((state) => state.set);
   const setVmStore = useVmStore((store) => store.set);
   const { requestAuthentication, saveCurrentUrl } = useSignInRedirect();
+  const idOS = useIdOS();
 
   useEffect(() => {
     initNear &&
@@ -68,14 +71,12 @@ export default function VmInitializer() {
             }),
             setupNightly(),
             setupWelldoneWallet(),
-            setupFastAuth({
-              networkId,
-              signInContractId,
+            setupFastAuthWallet({
               relayerUrl:
                 networkId === 'testnet'
                   ? 'http://34.70.226.83:3030/relay'
                   : 'https://near-relayer-mainnet.api.pagoda.co/relay',
-            }) as any, // TODO: Refactor setupFastAuth() to TS
+            }),
             setupKeypom({
               trialAccountSpecs: {
                 url:
@@ -93,22 +94,63 @@ export default function VmInitializer() {
               networkId,
               signInContractId,
             }) as any, // TODO: Refactor setupKeypom() to TS
+            setupLedger(),
           ],
         }),
         customElements: {
           Link: ({ href, to, ...rest }: any) => <Link href={sanitizeUrl(href ?? to)} {...rest} />,
         },
+        features: { enableComponentSrcDataKey: true },
       });
   }, [initNear]);
 
   useEffect(() => {
-    if (!near) {
+    if (!near || !idOS) {
       return;
     }
     near.selector.then((selector: any) => {
-      setWalletModal(setupModal(selector, { contractId: near.config.contractName }));
+      const selectorModal = setupModal(selector, {
+        contractId: near.config.contractName,
+        methodNames: idOS.near.contractMethods,
+      });
+      setWalletModal(selectorModal);
     });
-  }, [near]);
+  }, [idOS, near]);
+
+  const requestSignMessage = useCallback(
+    async (message: string) => {
+      if (!near) {
+        return;
+      }
+      const wallet = await (await near.selector).wallet();
+      const nonce = Buffer.from(Array.from(Array(32).keys()));
+      const recipient = 'social.near';
+
+      try {
+        const signedMessage = await wallet.signMessage({
+          message,
+          nonce,
+          recipient,
+        });
+
+        if (signedMessage) {
+          const verifiedFullKeyBelongsToUser = await wallet.verifyOwner({
+            message: signedMessage,
+          });
+
+          if (verifiedFullKeyBelongsToUser) {
+            alert(`Successfully verify signed message: '${message}': \n ${JSON.stringify(signedMessage)}`);
+          } else {
+            alert(`Failed to verify signed message '${message}': \n ${JSON.stringify(signedMessage)}`);
+          }
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : 'Something went wrong';
+        alert(errMsg);
+      }
+    },
+    [near],
+  );
 
   const requestSignInWithWallet = useCallback(() => {
     saveCurrentUrl();
@@ -125,7 +167,7 @@ export default function VmInitializer() {
     near.accountId = null;
     setSignedIn(false);
     setSignedAccountId(null);
-    resetSegment();
+    resetAnalytics();
     localStorage.removeItem('accountId');
   }, [near]);
 
@@ -166,6 +208,8 @@ export default function VmInitializer() {
       logOut,
       refreshAllowance,
       requestSignInWithWallet,
+      requestSignMessage,
+      vmNear: near,
       signedIn,
     });
   }, [
@@ -174,9 +218,11 @@ export default function VmInitializer() {
     logOut,
     refreshAllowance,
     requestSignInWithWallet,
+    requestSignMessage,
     signedIn,
     signedAccountId,
     setAuthStore,
+    near,
   ]);
 
   useEffect(() => {
