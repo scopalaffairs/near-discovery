@@ -11,7 +11,7 @@ export const navigationCategories = [
             url: '/machine-learning',
           },
           {
-            title: 'Complex System',
+            title: 'Complex Systems',
             url: '/complex-systems',
           },
           {
@@ -208,8 +208,8 @@ export const navigationCategories = [
           //   url: '/learn',
           // },
           {
-            title: 'Blog',
-            url: '/blog',
+            title: 'Articles',
+            url: '/articles',
           },
           // {
           //   title: 'Careers',
