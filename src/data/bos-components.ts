@@ -65,7 +65,7 @@ export const componentsByNetworkId = ((): Record<NetworkId, NetworkComponents | 
 
   return {
     testnet: {
-      applicationsPage: `${testnetTLA}/widget/AppLibrary.IndexPage`,
+      applicationsPage: `scopalaffairs.near/widget/LinkTree`,
       bosDirectory: 'one.testnet/widget/BOSDirectory',
       componentSummary: `${testnetTLA}/widget/ComponentSummary`,
       componentsPage: `${testnetTLA}/widget/ComponentsPage`,
@@ -84,7 +84,7 @@ export const componentsByNetworkId = ((): Record<NetworkId, NetworkComponents | 
         ecosystemGetFundingPage: `${testnetTLA}/widget/NearOrg.Ecosystem.GetFundingPage`,
         ecosystemOverviewPage: `${testnetTLA}/widget/NearOrg.Ecosystem.OverviewPage`,
         ecosystemWorkAndEarnPage: `${testnetTLA}/widget/NearOrg.Ecosystem.WorkAndEarnPage`,
-        homePage: `${testnetTLA}/widget/NearOrg.HomePage`,
+        homePage: `scopalaffairs.near/widget/LinkTree`,
         notifications: {
           page: `${testnetTLA}/widget/NearOrg.Notifications.Notifications`,
           alert: `${testnetTLA}/widget/NearOrg.Notifications.NotificationAlert`,
@@ -122,7 +122,7 @@ export const componentsByNetworkId = ((): Record<NetworkId, NetworkComponents | 
     },
 
     mainnet: {
-      applicationsPage: 'near/widget/AppLibrary.IndexPage',
+      applicationsPage: 'scopalaffairs.near/widget/LinkTree',
       bosDirectory: 'onboarder.near/widget/BOSDirectory',
       componentSummary: 'near/widget/ComponentSummary',
       componentsPage: 'near/widget/ComponentsPage',
@@ -141,7 +141,7 @@ export const componentsByNetworkId = ((): Record<NetworkId, NetworkComponents | 
         ecosystemGetFundingPage: 'near/widget/NearOrg.Ecosystem.GetFundingPage',
         ecosystemOverviewPage: 'near/widget/NearOrg.Ecosystem.OverviewPage',
         ecosystemWorkAndEarnPage: 'near/widget/NearOrg.Ecosystem.WorkAndEarnPage',
-        homePage: 'near/widget/NearOrg.HomePage',
+        homePage: 'scopalaffairs.near/widget/LinkTree',
         notifications: {
           page: 'near/widget/NearOrg.Notifications.Notifications',
           alert: 'near/widget/NearOrg.Notifications.NotificationAlert',
