@@ -116,7 +116,7 @@ export const MobileNavigation = () => {
           </Logo>
         </Link>
 
-        <Actions onClick={closeMenu}>
+        {/* <Actions onClick={closeMenu}>
           {signedIn ? (
             <>
               <NotificationButton mobileView />
@@ -125,7 +125,7 @@ export const MobileNavigation = () => {
           ) : (
             <Button label="Create Account" variant="primary" onClick={handleCreateAccount} />
           )}
-        </Actions>
+        </Actions> */}
 
         <MenuButton aria-label="Menu" onClick={toggleMenu}>
           {menuIsVisible ? <i className="ph ph-x" /> : <i className="ph ph-list" />}

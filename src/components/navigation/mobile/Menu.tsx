@@ -117,18 +117,18 @@ export function Menu(props: Props) {
   return (
     <Wrapper visible={props.isVisible}>
       <InnerWrapper>
-        <NearconBanner inline />
+        {/* <NearconBanner inline /> */}
 
         {/* <SearchButton onClick={search}>Search NEAR</SearchButton> */}
 
         <AccordionMenu onCloseMenu={props.onCloseMenu} />
 
-        {!signedIn && (
+        {/* {!signedIn && (
           <Actions>
             <Button label="Create Account" variant="primary" size="large" onClick={handleCreateAccount} />
             <Button label="Sign in" variant="secondary" size="large" onClick={handleSignIn} />
           </Actions>
-        )}
+        )} */}
       </InnerWrapper>
     </Wrapper>
   );

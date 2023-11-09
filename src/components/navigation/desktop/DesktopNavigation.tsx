@@ -171,7 +171,7 @@ export const DesktopNavigation = () => {
 
   return (
     <>
-      <NearconBanner />
+      {/* <NearconBanner /> */}
 
       <Wrapper scrolled={scrolled}>
         <Container className="container-xl">
