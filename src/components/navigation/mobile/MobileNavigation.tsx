@@ -110,11 +110,11 @@ export const MobileNavigation = () => {
   return (
     <Wrapper>
       <Navigation>
-        <Link href="/" passHref legacyBehavior>
+        {/* <Link href="/" passHref legacyBehavior>
           <Logo onClick={closeMenu}>
             <Image src={NearIcon} alt="NEAR" />
           </Logo>
-        </Link>
+        </Link> */}
 
         {/* <Actions onClick={closeMenu}>
           {signedIn ? (
